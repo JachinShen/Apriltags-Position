@@ -1,5 +1,5 @@
 /**
- * @file TagPosition.cpp
+ * @file TagPosition.cc
  * @use April tags library to get position
  * @April tags author: Michael Kaess
  * @author: Jachin Shen
@@ -12,79 +12,11 @@
  */
 
 #define M_DRAW true
-#define PI 3.14159265358
+//#define PI 3.14159265358
 #define radiusThreshold 0.2
 #include "AprilTags/TagPosition.h"
 const char* windowName= "apriltags_demo";
 
-vector<AprilTags::TagDetection> final_detections;
-
-double tic()
-{
-    struct timeval t;
-    gettimeofday(&t, NULL);
-    return ((double)t.tv_sec + ((double)t.tv_usec) / 1000000.);
-}
-
-/**
- * Convert rotation matrix to Euler angles
- */
-void wRo_to_euler(const Eigen::Matrix3d& wRo, double& yaw, double& pitch,
-        double& roll)
-{
-    yaw= standardRad(atan2(wRo(1, 0), wRo(0, 0)));
-    double c= cos(yaw);
-    double s= sin(yaw);
-    pitch= standardRad(atan2(-wRo(2, 0), wRo(0, 0) * c + wRo(1, 0) * s));
-    roll= standardRad(
-            atan2(wRo(0, 2) * s - wRo(1, 2) * c, -wRo(0, 1) * s + wRo(1, 1) * c));
-}
-
-float calculateDistance2Points(cv::Point2f Point1, cv::Point2f Point2)
-{
-    return sqrt( pow( Point1.x-Point2.x, 2) + 
-            pow( Point1.y-Point2.y, 2)); 
-}
-
-bool calculateCenterPointFrom3Circles(cv::Point2f Point1, float radius1,
-        cv::Point2f Point2, float radius2,
-        cv::Point2f Point3, float radius3,
-        cv::Point2f& centerPoint)
-{
-    float x1= Point1.x, x2= Point2.x, x3= Point3.x;
-    float y1= Point1.y, y2= Point2.y, y3= Point3.y;
-    float D= 2 * ((x2 - x1) * (y3 - y2) - (y2 - y1) * (x3 - x2));
-    if(abs(D) < 1e-7)
-        return false;
-    float C1= radius1 * radius1 - radius2 * radius2 + x2 * x2 - x1 * x1 +
-        y2 * y2 - y1 * y1;
-    float C2= radius2 * radius2 - radius3 * radius3 + x3 * x3 - x2 * x2 +
-        y3 * y3 - y2 * y2;
-    float Dx= C1 * (y3 - y2) - C2 * (y2 - y1);
-    float Dy= C2 * (x2 - x1) - C1 * (x3 - x2);
-    float centerPoint_x= Dx / D, centerPoint_y= Dy / D;
-    if(centerPoint_x > 0.85 || centerPoint_x < -0.85 ||
-            centerPoint_y > 0.85 || centerPoint_y < -0.85)
-        return false;
-    centerPoint= cv::Point2f(centerPoint_x, centerPoint_y);
-    return true;
-}
-
-bool reduceErrorByExtraCircle(cv::Point circlePoint, float radius,
-        float& centerPoint_x, float& centerPoint_y)
-{
-    float x4= circlePoint.x, y4= circlePoint.y;
-    float move_vector_length=
-        sqrt(pow(x4 - centerPoint_x, 2) + pow(y4 - centerPoint_y, 2));
-    if(abs(move_vector_length) < 1e-6)
-        return false;
-    float distance_to_correct= (move_vector_length - radius) / 2;
-    centerPoint_x+=
-        distance_to_correct / move_vector_length * (x4 - centerPoint_x);
-    centerPoint_y+=
-        distance_to_correct / move_vector_length * (y4 - centerPoint_y);
-    return true;
-}
 // default constructor
 TagPosition::TagPosition()
     :  // default settings, most can be modified through command line
@@ -120,6 +52,66 @@ TagPosition::TagPosition()
 {
 }
 
+double TagPosition::tic()
+{
+    struct timeval t;
+    gettimeofday(&t, NULL);
+    return ((double)t.tv_sec + ((double)t.tv_usec) / 1000000.);
+}
+
+/**
+ * Convert rotation matrix to Euler angles
+ */
+void TagPosition::wRo_to_euler(const Eigen::Matrix3d& wRo, double& yaw, double& pitch,
+        double& roll)
+{
+    yaw= standardRad(atan2(wRo(1, 0), wRo(0, 0)));
+    double c= cos(yaw);
+    double s= sin(yaw);
+    pitch= standardRad(atan2(-wRo(2, 0), wRo(0, 0) * c + wRo(1, 0) * s));
+    roll= standardRad(
+            atan2(wRo(0, 2) * s - wRo(1, 2) * c, -wRo(0, 1) * s + wRo(1, 1) * c));
+}
+
+float TagPosition::getDistance2Points(cv::Point2f Point1, cv::Point2f Point2)
+{
+    return sqrt( pow( Point1.x-Point2.x, 2) + 
+            pow( Point1.y-Point2.y, 2)); 
+}
+
+/* calculate the intersection point of 2 public secant of 3 circles:
+ * substract 2 circle equations to get public secant line equation
+ * use determinant to get the intersection point of 2 lines
+ * so, the point is in the triangle in the overlap region of 3 circles
+ */
+
+bool TagPosition::getCenterPointFrom3Circles(cv::Point2f Point1, float radius1,
+        cv::Point2f Point2, float radius2,
+        cv::Point2f Point3, float radius3,
+        cv::Point2f& centerPoint)
+{
+    float x1= Point1.x, x2= Point2.x, x3= Point3.x;
+    float y1= Point1.y, y2= Point2.y, y3= Point3.y;
+    float D= 2 * ((x2 - x1) * (y3 - y2) - (y2 - y1) * (x3 - x2));
+    if(abs(D) < 1e-7)
+        return false;
+    float C1= radius1 * radius1 - radius2 * radius2 + x2 * x2 - x1 * x1 +
+        y2 * y2 - y1 * y1;
+    float C2= radius2 * radius2 - radius3 * radius3 + x3 * x3 - x2 * x2 +
+        y3 * y3 - y2 * y2;
+    float Dx= C1 * (y3 - y2) - C2 * (y2 - y1);
+    float Dy= C2 * (x2 - x1) - C1 * (x3 - x2);
+    float centerPoint_x= Dx / D, centerPoint_y= Dy / D;
+    /* remove unreasonable points */
+    if(centerPoint_x > 0.85 || centerPoint_x < -0.85 ||
+            centerPoint_y > 0.85 || centerPoint_y < -0.85)
+    {
+        return false;
+    }
+    centerPoint = cv::Point2f(centerPoint_x, centerPoint_y);
+    return true;
+}
+
 // changing the tag family
 void TagPosition::setTagCodes(string s)
 {
@@ -150,95 +142,8 @@ void TagPosition::setTagCodes(string s)
     }
 }
 
-// parse command line options to change default behavior
-void TagPosition::parseOptions(int argc, char* argv[])
-{
-    int c;
-    while((c= getopt(argc, argv, ":h?adtC:F:H:S:W:E:G:B:D:")) != -1)
-    {
-        // Each option character has to be in the string in getopt();
-        // the first colon changes the error character from '?' to ':';
-        // a colon after an option means that there is an extra
-        // parameter to this option; 'W' is a reserved character
-        switch(c)
-        {
-            case 'h':
-            case '?':
-                cout << intro;
-                cout << usage;
-                exit(0);
-                break;
-            case 'a':
-                m_arduino= true;
-                break;
-            case 'd':
-                m_draw= false;
-                break;
-            case 't':
-                m_timing= true;
-                break;
-            case 'C':
-                setTagCodes(optarg);
-                break;
-            case 'F':
-                m_fx= atof(optarg);
-                m_fy= m_fx;
-                break;
-            case 'H':
-                m_height= atoi(optarg);
-                m_py= m_height / 2;
-                break;
-            case 'S':
-                m_tagSize= atof(optarg);
-                break;
-            case 'W':
-                m_width= atoi(optarg);
-                m_px= m_width / 2;
-                break;
-            case 'E':
-#ifndef EXPOSURE_CONTROL
-                cout << "Error: Exposure option (-E) not available" << endl;
-                exit(1);
-#endif
-                m_exposure= atoi(optarg);
-                break;
-            case 'G':
-#ifndef EXPOSURE_CONTROL
-                cout << "Error: Gain option (-G) not available" << endl;
-                exit(1);
-#endif
-                m_gain= atoi(optarg);
-                break;
-            case 'B':
-#ifndef EXPOSURE_CONTROL
-                cout << "Error: Brightness option (-B) not available" << endl;
-                exit(1);
-#endif
-                m_brightness= atoi(optarg);
-                break;
-            case 'D':
-                m_deviceId= atoi(optarg);
-                break;
-            case ':':  // unknown option, from getopt
-                cout << intro;
-                cout << usage;
-                exit(1);
-                break;
-        }
-    }
-
-    if(argc > optind)
-    {
-        for(int i= 0; i < argc - optind; i++)
-        {
-            m_imgNames.push_back(argv[optind + i]);
-        }
-    }
-}
-
 void TagPosition::setup()
 {
-    setTagCodes("16h5");
     m_tagDetector= new AprilTags::TagDetector(m_tagCodes);
 
     // prepare window for drawing the camera images
@@ -254,62 +159,62 @@ void TagPosition::setup()
     }
 }
 
-/*void TagPosition::setupVideo() {
+void TagPosition::setupVideo() {
 
 #ifdef EXPOSURE_CONTROL
-// manually setting camera exposure settings; OpenCV/v4l1 doesn't
-// support exposure control; so here we manually use v4l2 before
-// opening the device via OpenCV; confirmed to work with Logitech
-// C270; try exposure=20, gain=100, brightness=150
+    // manually setting camera exposure settings; OpenCV/v4l1 doesn't
+    // support exposure control; so here we manually use v4l2 before
+    // opening the device via OpenCV; confirmed to work with Logitech
+    // C270; try exposure=20, gain=100, brightness=150
 
-string video_str = "/dev/video";
-video_str[10] = '0' + m_deviceId;
-int device = v4l2_open(video_str.c_str(), O_RDWR | O_NONBLOCK);
+    string video_str = "/dev/video";
+    video_str[10] = '0' + m_deviceId;
+    int device = v4l2_open(video_str.c_str(), O_RDWR | O_NONBLOCK);
 
-if (m_exposure >= 0) {
-// not sure why, but v4l2_set_control() does not work for
-// V4L2_CID_EXPOSURE_AUTO...
-struct v4l2_control c;
-c.id = V4L2_CID_EXPOSURE_AUTO;
-c.value = 1; // 1=manual, 3=auto; V4L2_EXPOSURE_AUTO fails...
-if (v4l2_ioctl(device, VIDIOC_S_CTRL, &c) != 0) {
-cout << "Failed to set... " << strerror(errno) << endl;
-}
-cout << "exposure: " << m_exposure << endl;
-v4l2_set_control(device, V4L2_CID_EXPOSURE_ABSOLUTE,
-m_exposure*6);
-}
-if (m_gain >= 0) {
-cout << "gain: " << m_gain << endl;
-v4l2_set_control(device, V4L2_CID_GAIN, m_gain*256);
-}
-if (m_brightness >= 0) {
-cout << "brightness: " << m_brightness << endl;
-v4l2_set_control(device, V4L2_CID_BRIGHTNESS,
-m_brightness*256);
-}
-v4l2_close(device);
+    if (m_exposure >= 0) {
+        // not sure why, but v4l2_set_control() does not work for
+        // V4L2_CID_EXPOSURE_AUTO...
+        struct v4l2_control c;
+        c.id = V4L2_CID_EXPOSURE_AUTO;
+        c.value = 1; // 1=manual, 3=auto; V4L2_EXPOSURE_AUTO fails...
+        if (v4l2_ioctl(device, VIDIOC_S_CTRL, &c) != 0) {
+            cout << "Failed to set... " << strerror(errno) << endl;
+        }
+        cout << "exposure: " << m_exposure << endl;
+        v4l2_set_control(device, V4L2_CID_EXPOSURE_ABSOLUTE,
+                m_exposure*6);
+    }
+    if (m_gain >= 0) {
+        cout << "gain: " << m_gain << endl;
+        v4l2_set_control(device, V4L2_CID_GAIN, m_gain*256);
+    }
+    if (m_brightness >= 0) {
+        cout << "brightness: " << m_brightness << endl;
+        v4l2_set_control(device, V4L2_CID_BRIGHTNESS,
+                m_brightness*256);
+    }
+    v4l2_close(device);
 #endif
 
-// find and open a USB camera (built in laptop camera, web cam
-etc)
-m_cap = cv::VideoCapture("/home/jachinshen/视频/arc2.avi");
-if(!m_cap.isOpened()) {
-cerr << "ERROR: Can't find video device " << m_deviceId <<
-"\n";
-exit(1);
+    // find and open a USB camera (built in laptop camera, web cam
+    etc)
+        m_cap = cv::VideoCapture("/home/jachinshen/视频/arc2.avi");
+    if(!m_cap.isOpened()) {
+        cerr << "ERROR: Can't find video device " << m_deviceId <<
+            "\n";
+        exit(1);
+    }
+    m_cap.set(CV_CAP_PROP_FRAME_WIDTH, m_width);
+    m_cap.set(CV_CAP_PROP_FRAME_HEIGHT, m_height);
+    cout << "Camera successfully opened (ignore error messages
+        above...)" << endl;
+    cout << "Actual resolution: "
+        << m_cap.get(CV_CAP_PROP_FRAME_WIDTH) << "x"
+        << m_cap.get(CV_CAP_PROP_FRAME_HEIGHT) << endl;
+
 }
-m_cap.set(CV_CAP_PROP_FRAME_WIDTH, m_width);
-m_cap.set(CV_CAP_PROP_FRAME_HEIGHT, m_height);
-cout << "Camera successfully opened (ignore error messages
-above...)" << endl;
-cout << "Actual resolution: "
-<< m_cap.get(CV_CAP_PROP_FRAME_WIDTH) << "x"
-<< m_cap.get(CV_CAP_PROP_FRAME_HEIGHT) << endl;
 
-}*/
-
-void TagPosition::print_detection(AprilTags::TagDetection& detection) const
+void TagPosition::printDetection(AprilTags::TagDetection& detection) const
 {
     cout << "  Id: " << detection.id << " (Hamming: " << detection.hammingDistance
         << ")";
@@ -341,7 +246,7 @@ void TagPosition::print_detection(AprilTags::TagDetection& detection) const
     // for suitable factors.
 }
 
-void TagPosition::getDetectionLocationAndDistance(
+void TagPosition::getDetectionLocationDistance(
         vector<cv::Point2f>& detections_location,
         vector<float>& detections_distance, float detections_height)
 {
@@ -351,6 +256,7 @@ void TagPosition::getDetectionLocationAndDistance(
       cv::Point2f(0.0, 0.85), cv::Point2f(0.0, 0.0),   cv::Point2f(0.0, 0.0),
       cv::Point2f(0.0, 0.0),   cv::Point2f(0.85, 0.85)
       };*/
+    /* tag coordinates to ground, origin point is in the center */
     static cv::Point2f id2location[12]= {
         cv::Point2f(-0.85, 0.85),   cv::Point2f(-0.85, 0.00),  cv::Point2f(-0.85, -0.85),
         cv::Point2f(0.00, 0.85),  cv::Point2f(0.00, -0.85), cv::Point2f(0.85, 0.85),
@@ -384,7 +290,7 @@ void TagPosition::getDetectionLocationAndDistance(
     }
 }
 
-bool TagPosition::calculateBasePostion(vector<cv::Point2f>& detections_location,
+bool TagPosition::getBasePostion(vector<cv::Point2f>& detections_location,
         vector<float>& detections_distance)
 {
     int detections_cnt= detections_location.size();
@@ -411,14 +317,14 @@ bool TagPosition::calculateBasePostion(vector<cv::Point2f>& detections_location,
         cv::Point2f centerPoint;
         vector<cv::Point2f> centerPoints;
         float radius;
-        // calculate centerpoint(s)
+        // get centerpoint(s)
         for(int i= 0; i < detections_location.size() - 2; i++)
         {
             for(int j= i + 1; j < detections_location.size() - 1; j++)
             {
                 for(int k= j + 1; k < detections_location.size(); k++)
                 {
-                    if(calculateCenterPointFrom3Circles(
+                    if(getCenterPointFrom3Circles(
                                 detections_location[i], detections_distance[i],
                                 detections_location[j], detections_distance[j],
                                 detections_location[k], detections_distance[k], centerPoint))
@@ -477,8 +383,6 @@ void TagPosition::processImage(const cv::Mat& image, cv::Mat& image_gray)
     }
     detections= m_tagDetector->extractTags(image_gray);
 
-    final_detections= detections;
-
     if(m_timing)
     {
         double dt= tic() - t0;
@@ -527,125 +431,10 @@ void TagPosition::processImage(const cv::Mat& image, cv::Mat& image_gray)
     }
 }
 
-// Load and process a single image
-/*void TagPosition::loadImages() {
-  cv::Mat image;
-  cv::Mat image_gray;
-
-  for (list<string>::iterator it=m_imgNames.begin();
-  it!=m_imgNames.end(); it++) {
-  image = cv::imread(*it); // load image with opencv
-  processImage(image, image_gray);
-  while (cv::waitKey(100) == -1) {}
-  }
-  }
-  */
-// Video or image processing?
 bool TagPosition::isVideo()
 {
     return m_imgNames.empty();
 }
-
-// The processing loop where images are retrieved, tags detected,
-// and information about detections generated
-/*void TagPosition::loop(int argc, char* argv[]) {
-
-  cv::Mat image;
-  cv::Mat image_gray;
-  cv::Mat draw = image.clone();
-
-  vector< cv::Point2f > detections_location;
-  vector< float > detections_distance;
-  float detections_height=2.5;
-
-
-  ros::init(argc, argv, "my_tf_broadcaster");
-  ros::NodeHandle node;
-  tf::TransformBroadcaster br;
-  tf::Transform transform_test;
-
-  transform_test.setOrigin( tf::Vector3(0.0, 0.0, 0.0) );
-  transform_test.setRotation( tf::Quaternion(0, 0, 0, 1) );
-  br.sendTransform(tf::StampedTransform(transform_test,
-  ros::Time::now(), "camera_rgb_optical_frame", "marker_frame"));
-
-  ros::Rate loop_rate(20);
-
-  int frame = 0;
-  double last_t = tic();
-  while (ros::ok()) {
-
-// capture frame
-m_cap >> image;
-
-processImage(image, image_gray);
-
-getDetectionLocationAndDistance(detections_location,
-detections_distance,
-detections_height);
-
-if( calculateBasePostion(detections_location,
-detections_distance))
-{
-cout<<"base x:"<<base_position_x<<"
-y:"<<base_position_y<<endl;
-}
-else
-cout<<"can't calculate base position"<<endl;
-// print out the frame rate at which image frames are being
-processed
-frame++;
-if (frame % 10 == 0) {
-double t = tic();
-cout << "  " << 10./(t-last_t) << " fps" << endl;
-last_t = t;
-}
-
-// recovering the relative pose of a tag:
-
-// NOTE: for this to be accurate, it is necessary to use the
-// actual camera parameters here as well as the actual tag
-size
-// (m_fx, m_fy, m_px, m_py, m_tagSize)
-
-/*Eigen::Vector3d translation;
-Eigen::Matrix3d rotation;
-//detection.getRelativeTranslationRotation(m_tagSize, m_fx,
-m_fy, m_px, m_py,
-//                                         translation,
-rotation);
-
-Eigen::Matrix3d F;
-F <<
-1, 0,  0,
-0,  -1,  0,
-0,  0,  1;
-Eigen::Matrix3d fixed_rot = F*rotation;
-double yaw, pitch, roll;
-wRo_to_euler(fixed_rot, yaw, pitch, roll);
-
-cout << "  distance=" << translation.norm()
-<< "m, x=" << translation(0)
-<< ", y=" << translation(1)
-<< ", z=" << translation(2)
-<< ", yaw=" << yaw
-<< ", pitch=" << pitch
-<< ", roll=" << roll
-<< endl;
-
-
-transform_test.setOrigin( tf::Vector3(translation(0),
-translation(1), translation(2)) );
-transform_test.setRotation( tf::Quaternion(0, 0, 0, 1) );
-br.sendTransform(tf::StampedTransform(transform_test,
-ros::Time::now(), "camera_rgb_optical_frame", "marker_frame"));
-// exit if any key is pressed
-//if (cv::waitKey(1) >= 0) break;
-cv::waitKey(0);
-}
-ros::spinOnce();
-loop_rate.sleep();
-}*/
 
 bool TagPosition::getBasePosition(const cv::Mat& src, float detections_height)
 {
@@ -659,7 +448,7 @@ bool TagPosition::getBasePosition(const cv::Mat& src, float detections_height)
         return false;
     getDetectionLocationAndDistance(detections_location, detections_distance,
             detections_height);
-    return calculateBasePostion(detections_location, detections_distance);
+    return getBasePostion(detections_location, detections_distance);
 
 }
 

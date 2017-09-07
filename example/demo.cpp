@@ -1,4 +1,4 @@
-#include "AprilTags/QRCode.h"
+#include "AprilTags/TagPosition.h"
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -12,10 +12,11 @@ using namespace std;
 
 int main(int argc, char** argv)
 {
-  QRCode qr_code;
-  qr_code.setVisability(VISABILITY);
-  qr_code.setup();
-  cout<<"QRCode OK!"<<endl;
+  TagPosition tag_position;
+  tag_position.setVisability(VISABILITY);
+  tag_position.setTagCodes("16h5");
+  tag_position.setup();
+  cout<<"TagPosition OK!"<<endl;
 
   VideoCapture m_cap("~/Projects/Cpp/apriltags/src/demo.avi");
   Mat frame;
@@ -27,9 +28,9 @@ int main(int argc, char** argv)
   float direction_degree=0;
   while(m_cap.read(frame))
   {
-    cout<<"if has base:"<<qr_code.getBasePosition(frame, 2.4)<<endl;
-    cout<<"X:"<<qr_code.getBaseX()<<" Y:"<<qr_code.getBaseY()<<endl;
-    qr_code.getBaseDirection(direction_degree);
+    cout<<"if has base:"<<tag_position.getBasePosition(frame, 2.4)<<endl;
+    cout<<"X:"<<tag_position.getBaseX()<<" Y:"<<tag_position.getBaseY()<<endl;
+    tag_position.getBaseDirection(direction_degree);
     cout<<"base direction: "<<direction_degree<<endl;
     //imshow("frame", frame);
     waitKey(0);
