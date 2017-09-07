@@ -2,3 +2,5 @@ build
 pod-build
 .svn
 old
+*.swp
+*.swo
