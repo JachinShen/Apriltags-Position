@@ -111,9 +111,14 @@ class CameraPosition {
     /* is there enough tags to calculate position */
     bool isTagEnough();
     
+    /* coords of camera's shadow on the ground */
     float getX();
     float getY();
 
+    /* the degrees of camera's rotation to ground
+     * >0 if the tags is clockwise in the image
+     * <0 reverse
+     */
     float getDirection();
 
 };
