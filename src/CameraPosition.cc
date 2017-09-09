@@ -140,7 +140,8 @@ void CameraPosition::getShadowLocationRadius()
     float shadow_distance;
 
     /* find the right id tags and get the distance 
-     * from camera's shadow on ground to tag*/
+     * from camera's shadow on ground to tag
+     */
     for(int i= 0; i < detections.size(); i++)
     {
         if(detections[i].hammingDistance != 0)
@@ -189,7 +190,6 @@ bool CameraPosition::calculateShadowXY()
     {
         cv::Point2f centerPoint;
         vector<cv::Point2f> centerPoints;
-        float radius;
         // get centerpoint(s) of all circles
         for(int i= 0; i < shadow_location.size() - 2; i++)
         {
@@ -322,19 +322,19 @@ float CameraPosition::getDirection()
     float degree;
     vector< float > degrees;
     float degree_sum = 0;
-    for( int i=0; i<detections.size()-1; i++)
+    for( int i=0; i < detections.size()-1; i++)
     {
         if(detections[i].hammingDistance != 0)
             continue;
         if(!((detections[i].id >= 0 && detections[i].id <= 6) ||
                     detections[i].id == 10))
             continue;    
-        for(int j=i+1; j<detections.size(); j++)
+        for(int j=i+1; j < detections.size(); j++)
         {
             if(detections[j].hammingDistance != 0 ||
-                    !( (detections[j].id>=0 &&
+                    !( (detections[j].id >= 0 &&
                             detections[j].id<=6) ||
-                        detections[j].id==10) )
+                        detections[j].id == 10) )
                 continue;
 
             tag_vector_x = id2location[detections[j].id].x
