@@ -24,14 +24,12 @@ Detect the apriltags on the ground to get camera's position (location and direct
 
 ## Usage:
 
-> cd path/to/apriltags
-
-> make
-
-> ./build/bin/demo
+> cd path/to/apriltags\
+> make\
+> ./build/bin/demo\
 
 Then it will show you a video with tags drawed, and the terminal will print location and direction.
 
 ## Example
 
-Example code is in example/demo.cpp
+Example code is in example/demo.cpp.
