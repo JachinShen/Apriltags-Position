@@ -17,12 +17,15 @@ This C++ code was further modified by
 Michael Kaess (kaess@mit.edu) and Hordur Johannson (hordurj@mit.edu)
 and the code has been released under the LGPL 2.1 license.
 
-## Function: detect the apriltags on the ground to get camera's position (location and direction)
+## Function: 
+detect the apriltags on the ground to get camera's position (location and direction)
 
 ## Usage:
 
 > cd path/to/apriltags
+
 > make
+
 > ./build/bin/demo
 
 Then it will show you a video with tags drawed, and the terminal will print location and direction
