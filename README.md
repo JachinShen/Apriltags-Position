@@ -1,8 +1,9 @@
 # AprilTag Position
 
-author of cameraPosition is JachinShen (jachinshen@foxmail.com)
+author of CameraPosition is JachinShen (jachinshen@foxmail.com).
 
 ## AprilTags library
+
 AprilTags were developed by Professor Edwin Olson of the University of
 Michigan.  His Java implementation is available on this web site:
   http://april.eecs.umich.edu.
@@ -18,7 +19,8 @@ Michael Kaess (kaess@mit.edu) and Hordur Johannson (hordurj@mit.edu)
 and the code has been released under the LGPL 2.1 license.
 
 ## Function: 
-detect the apriltags on the ground to get camera's position (location and direction)
+
+Detect the apriltags on the ground to get camera's position (location and direction).
 
 ## Usage:
 
@@ -28,6 +30,8 @@ detect the apriltags on the ground to get camera's position (location and direct
 
 > ./build/bin/demo
 
-Then it will show you a video with tags drawed, and the terminal will print location and direction
+Then it will show you a video with tags drawed, and the terminal will print location and direction.
+
+## Example
 
 Example code is in example/demo.cpp
