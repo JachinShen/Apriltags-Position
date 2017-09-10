@@ -26,7 +26,7 @@ Detect the apriltags on the ground to get camera's position (location and direct
 
 > cd path/to/apriltags\
 > make\
-> ./build/bin/demo\
+> ./build/bin/demo
 
 Then it will show you a video with tags drawed, and the terminal will print location and direction.
 
