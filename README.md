@@ -33,3 +33,7 @@ Then it will show you a video with tags drawed, and the terminal will print loca
 ## Example
 
 Example code is in example/demo.cpp.
+
+## Details
+
+For more details, please go to [My Blog](https://jachinshen.github.io/robomaster/2017/09/06/%E5%9F%BA%E5%9C%B0%E4%BA%8C%E7%BB%B4%E7%A0%81%E5%AE%9A%E4%BD%8D.html)
